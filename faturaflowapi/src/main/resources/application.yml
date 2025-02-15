@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: faturaflow
+  datasource:
+    url: jdbc:postgresql://localhost:5432/faturaflow
+    username: renatoguii
+    password: 153422
+  jpa:
+    database: POSTGRESQL
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+# Production
+--- # o que vier após esses 3 traços, será sobrescrito
+spring:
+  config:
+    activate:
+      on-profile: production
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST}:5432/imagelite

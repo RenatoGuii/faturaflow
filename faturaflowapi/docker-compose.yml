@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_USER: renatoguii
+      POSTGRES_PASSWORD: 153422
+      POSTGRES_DB: faturaflow
+    ports:
+      - '5432:5432'
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    networks:
+      - faturaflownetwork
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+    ports:
+      - '15432:80'
+    depends_on:
+      - db
+    networks:
+      - faturaflownetwork
+
+networks:
+  faturaflownetwork:
+    driver: bridge
