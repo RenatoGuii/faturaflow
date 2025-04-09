@@ -1,92 +1,163 @@
-import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+"use client"
 
-// Registrar os elementos necessários para o gráfico de linha
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+import { useEffect, useState } from "react"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
-const data = {
-  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], // Eixo X
-  datasets: [
-    {
-      label: 'Vendas 2025', // Nome da série
-      data: [65, 59, 80, 81, 56, 55], // Valores das vendas
-      fill: false, // Não preenche a área abaixo da linha
-      borderColor: '#FF5733', // Cor da linha
-      tension: 0.1, // Curvatura da linha
-      pointBackgroundColor: '#FF5733', // Cor dos pontos
-      pointBorderColor: '#fff', // Cor da borda dos pontos
-      pointBorderWidth: 2, // Largura da borda dos pontos
-      pointRadius: 5, // Tamanho dos pontos
-      borderWidth: 3, // Largura da linha
-      hoverBackgroundColor: '#FF5733', // Cor ao passar o mouse
-    },
-    {
-      label: 'Vendas 2024', // Nome da outra série
-      data: [28, 48, 40, 19, 86, 27],
-      fill: false,
-      borderColor: '#33FF57',
-      tension: 0.1,
-      pointBackgroundColor: '#33FF57',
-      pointBorderColor: '#fff',
-      pointBorderWidth: 2,
-      pointRadius: 5,
-      borderWidth: 3,
-      hoverBackgroundColor: '#33FF57',
-    },
-  ],
-};
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import { Invoice, useInvoiceService } from "@/resources"
 
-const options = {
-  responsive: true,
-  maintainAspectRatio: false, // Permite controlar a altura e largura manualmente
-  plugins: {
-    tooltip: {
-      enabled: true, // Exibe tooltips
-      backgroundColor: 'rgba(0,0,0,0.7)', // Cor do fundo da tooltip
-      titleFont: { size: 16 }, // Tamanho da fonte do título da tooltip
-      bodyFont: { size: 14 }, // Tamanho da fonte do corpo da tooltip
-      bodyColor: '#fff', // Cor do texto na tooltip
-    },
-    legend: {
-      display: true, // Exibe a legenda
-      position: 'top', // Posição da legenda
-      labels: {
-        font: {
-          size: 14, // Tamanho da fonte da legenda
-        },
-      },
-    },
+const chartConfig = {
+  views: {
+    label: "Valor da(s) Fatura(s)",
   },
-  scales: {
-    x: {
-      title: {
-        display: true, // Exibe o título do eixo X
-        text: 'Meses',
-        font: {
-          size: 16,
-        },
-      },
-    },
-    y: {
-      title: {
-        display: true, // Exibe o título do eixo Y
-        text: 'Vendas',
-        font: {
-          size: 16,
-        },
-      },
-      ticks: {
-        beginAtZero: true, // Inicia o gráfico a partir de 0
-      },
-    },
+  invoices: {
+    label: "invoices",
+    color: "#b91c1c",
   },
-};
+} satisfies ChartConfig
+
+interface MappedInvoice {
+  date: string | undefined;
+  invoices: number | undefined;
+  count: number; 
+}
 
 export const InvoiceLineChart: React.FC = () => {
-  return (
-    <div className='w-full h-full'>
-      <Line data={data} options={options} />
-    </div>
-  );
-};
+  const [data, setData] = useState<Invoice[]>([]);
+  const [chartData, setChartData] = useState<MappedInvoice[]>();
+  const useService = useInvoiceService();
 
+  const formatMonthYear = (dateString: string) => {
+    const [day, month, year] = dateString.split(" ")[0].split("/");
+    return `${month}/${year}`;
+  }
+
+  useEffect(() => {
+    const search = async () => {
+      const result = await useService.searchAll();
+      setData(result);
+    }
+    search();
+  }, []);
+
+  useEffect(() => {
+    if (data.length === 0) return;
+  
+    const aggregated = data.reduce((acc, invoice) => {
+      const monthYear = invoice.createdAt ? formatMonthYear(invoice.createdAt) : "";
+      const amount = invoice.totalAmount || 0;
+  
+      if (acc[monthYear]) {
+        acc[monthYear].total += amount; 
+        acc[monthYear].count += 1; 
+      } else {
+        acc[monthYear] = { total: amount, count: 1 }; 
+      }
+      return acc;
+    }, {} as { [key: string]: { total: number; count: number } });
+  
+    const mappedData = Object.keys(aggregated).map((monthYear) => ({
+      date: monthYear,
+      invoices: aggregated[monthYear].total,
+      count: aggregated[monthYear].count, 
+    }));
+  
+    mappedData.sort((a, b) => {
+      const [monthA, yearA] = a.date.split("/");
+      const [monthB, yearB] = b.date.split("/");
+      return new Date(Number(yearA), Number(monthA) - 1).getTime() - new Date(Number(yearB), Number(monthB) - 1).getTime();
+    });
+  
+    setChartData(mappedData);
+  }, [data]);
+
+  return (
+    <Card className="bg-zinc-900 min-w-651px fill-white">
+      <CardHeader className="flex flex-col items-stretch space-y-0 border-b p-0 sm:flex-row">
+        <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-5 sm:py-6">
+          <CardTitle className="text-white font-normal">
+            Total Acumulado de Faturas Criadas
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            Veja a evolução do Valor Total das Faturas ao Longo do Tempo
+          </CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="pl-2 py-8 sm:py-6 pr-12">
+        <ChartContainer
+          config={chartConfig}
+          className="aspect-auto h-[250px] w-full"
+        >
+          <BarChart
+            accessibilityLayer
+            data={chartData}
+            margin={{
+              left: 12,
+              right: 12,
+            }}
+          >
+
+            <CartesianGrid vertical={false} stroke="#ffffff" />
+
+            <YAxis />
+
+            <XAxis
+              dataKey="date"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              minTickGap={32}
+              tickFormatter={(value) => {
+                const [month, year] = value.split("/");
+                return new Date(Number(year), Number(month) - 1).toLocaleDateString("pt-BR", {
+                  month: "numeric",
+                  year: "numeric",
+                });
+              }}
+            />
+
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  className="w-[150px]"
+                  nameKey="views"
+                  labelFormatter={(value) => {
+                    const [month, year] = value.split("/");
+                    return new Date(Number(year), Number(month) - 1).toLocaleDateString("pt-BR", {
+                      month: "short",
+                      year: "numeric",
+                    });
+                  }}
+                  formatter={(value, name, props) => {
+                    const count = props.payload.count; 
+                    return (
+                      <div className="text-center py-1 bg-gray-300 w-full">
+                        <p>Fatura(s): {count}</p> 
+                        <p>R$ {Number(value).toFixed(2)}</p>
+                      </div>
+                    );
+                  }}
+                />
+              }
+            />
+
+            <Bar dataKey="invoices" fill={`var(--color-invoices)`} />
+
+          </BarChart>
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  )
+}

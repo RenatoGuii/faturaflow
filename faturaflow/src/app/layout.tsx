@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inconsolata } from "next/font/google";
 import "./globals.css";
-import { OpenSideBarProvider } from "@/contexts";
+import { OpenModalAssuranceProvider, OpenModalItemsProvider, OpenSideBarProvider } from "@/contexts";
+import { OpenModalManageInvoiceProvider } from "@/contexts/OpenModalManageInvoiceContext";
 
 const inconsolata = Inconsolata({
   variable: "--font-inconsolata",
@@ -31,14 +32,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <OpenSideBarProvider>
-      <html lang="en">
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} ${inconsolata.variable} antialiased h-screen`}
-        >
-          {children}
-        </body>
-      </html>
-    </OpenSideBarProvider>
+    <OpenModalAssuranceProvider>
+      <OpenModalManageInvoiceProvider>
+        <OpenModalItemsProvider>
+          <OpenSideBarProvider>
+            <html lang="en">
+              <body
+                className={`${geistSans.variable} ${geistMono.variable} ${inconsolata.variable} antialiased h-screen`}
+              >
+                {children}
+              </body>
+            </html>
+          </OpenSideBarProvider>
+        </OpenModalItemsProvider>
+      </OpenModalManageInvoiceProvider>
+    </OpenModalAssuranceProvider>
   );
 }

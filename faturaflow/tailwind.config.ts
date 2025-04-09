@@ -23,6 +23,7 @@ export default {
   		colors: {
   			secondaryColor: '#c89c34',
   			darkGray: '#171717',
+			purple: "#342c45",
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
@@ -59,15 +60,16 @@ export default {
   			chart: {
   				'1': 'hsl(var(--chart-1))',
   				'2': 'hsl(var(--chart-2))',
-  				'3': 'hsl(var(--chart-3))',
-  				'4': 'hsl(var(--chart-4))',
-  				'5': 'hsl(var(--chart-5))'
   			}
   		},
   		spacing: {
-  			'12px': '5px',
+  			'5px': '5px',
+			'48px': '48px',
+			'200px': '200px',
+			'270px': '270px',
+			'380px': '380px',
+			'630px': '630px',
   			'640px': '640px',
-			'651px': '651px',
 			'1160px': '1160px',
   			'1450px': '1450px'
   		},

@@ -11,13 +11,8 @@ export const Header: React.FC = () => {
                         <div className="flex gap-5 pt-2">
                             <a 
                             className="hover:text-secondaryColor duration-300"
-                            href="/login">
+                            href="/auth">
                                 Entrar
-                            </a>
-                            <a 
-                            className="hover:text-secondaryColor duration-300"
-                            href="/register">
-                                Registre-se
                             </a>
                         </div>
                     </div>

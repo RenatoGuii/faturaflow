@@ -1,69 +1,124 @@
-import { Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import ChartDataLabels from 'chartjs-plugin-datalabels';
-import { title } from 'process';
-import { text } from 'stream/consumers';
+"use client"
 
-ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
+import { useEffect, useMemo, useState } from "react"
+import { Label, Pie, PieChart } from "recharts"
 
-const data = {
-  labels: ['Pagos', 'Não Pagos'],
-  datasets: [
-    {
-      data: [300, 100],
-      backgroundColor: ['#ab000b', '#0000f2'],
-      hoverBackgroundColor: ['#FF4568', '#2482E5'],
-      borderColor: '#fff', 
-      borderWidth: 2, 
-    },
-  ],
-};
+import {
+  Card,
+  CardContent,
+  CardHeader,
+} from "@/components/ui/card"
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import { Invoice, useInvoiceService } from "@/resources"
 
-const options = {
-  responsive: true, 
-  maintainAspectRatio: false, 
-  plugins: {
-    legend: {
-      display: true, 
-      position: 'bottom', 
-      align: 'center', 
-      labels: {
-        color: '#d1d5db', 
-        font: {
-          family: 'Inconsolata', 
-          size: 12, 
-          style: 'normal', 
-          lineHeight: 1.2, 
-        },
-        padding: 25, 
-        boxWidth: 20, 
-        usePointStyle: false, 
-      },
-    },
-    tooltip: {
-      enabled: true, 
-      backgroundColor: 'rgba(0,0,0,0.7)', 
-      titleFont: { size: 16 }, 
-      bodyFont: { size: 14 }, 
-      bodyColor: '#fff', 
-    },
-    datalabels: {
-      color: '#fff', 
-      anchor: 'center', 
-      align: 'center',
-      font: {
-        weight: 'bold',
-        size: 14,
-      },
-      formatter: (value: any) => `${value}`, 
-    },
+const chartConfig = {
+  paid: {
+    label: "paid",
+    color: "#15803d",
   },
-};
+  notpaid: {
+    label: "notpaid",
+    color: "#f97316",
+  },
+  overdue: {
+    label: "overdue",
+    color: "#b91c1c",
+  },
+} satisfies ChartConfig
 
 export const InvoicePieChart: React.FC = () => {
+  const useService = useInvoiceService();
+  const [invoicesOverdue, setInvoicesOverdue] = useState<Invoice[]>([]);
+  const [invoicesNotPaid, setInvoicesNotPaid] = useState<Invoice[]>([]);
+  const [invoicesPaid, setInvoicesPaid] = useState<Invoice[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const resultPaid = await useService.searchAllByStatus("PAID");
+      const resultNotPaid = await useService.searchAllByStatus("NOTPAID");
+      const resultOverdue = await useService.searchAllByStatus("OVERDUE");
+
+      setInvoicesPaid(resultPaid);
+      setInvoicesNotPaid(resultNotPaid);
+      setInvoicesOverdue(resultOverdue);
+    };
+
+    fetchData();
+  }, []);
+
+  const chartData = useMemo(() => [
+    { status: "Paga(s)", amount: invoicesPaid.length, fill: chartConfig.paid.color },
+    { status: "Não Paga(s)", amount: invoicesNotPaid.length, fill: chartConfig.notpaid.color },
+    { status: "Vencida(s)", amount: invoicesOverdue.length, fill: chartConfig.overdue.color },
+  ], [invoicesPaid, invoicesNotPaid, invoicesOverdue]);
+
+  const totalInvoices = useMemo(() => {
+    return chartData.reduce((acc, curr) => acc + curr.amount, 0);
+  }, [chartData]);
+
   return (
-    <div className='w-80 h-56'>
-      <Pie data={data} options={options} />
-    </div>
+    <Card className="flex flex-col bg-transparent border-none w-96">
+      <CardHeader>
+        <h1 className="text-white font-normal text-lg">
+          Distribuição de Faturas
+        </h1>
+      </CardHeader>
+      <CardContent className="flex-1 pb-0">
+        <ChartContainer
+          config={chartConfig}
+          className="mx-auto aspect-square max-h-[250px]"
+        >
+          <PieChart>
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent hideLabel />}
+            />
+            <Pie
+              data={chartData}
+              dataKey="amount"
+              nameKey="status"
+              innerRadius={60}
+              strokeWidth={2}
+              stroke="#ffffff"
+            >
+              <Label
+                content={({ viewBox }) => {
+                  if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                    return (
+                      <text
+                        x={viewBox.cx}
+                        y={viewBox.cy}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        <tspan
+                          x={viewBox.cx}
+                          y={viewBox.cy}
+                          className="fill-white text-3xl font-bold"
+                        >
+                          {totalInvoices.toLocaleString()}
+                        </tspan>
+                        <tspan
+                          x={viewBox.cx}
+                          y={(viewBox.cy || 0) + 24}
+                          className="fill-gray-300"
+                        >
+                          Faturas
+                        </tspan>
+                      </text>
+                    );
+                  }
+                }}
+              />
+            </Pie>
+          </PieChart>
+        </ChartContainer>
+      </CardContent>
+    </Card>
   );
-};
+}

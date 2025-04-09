@@ -3,14 +3,20 @@ package com.renatoguii.faturaflow.services;
 import com.renatoguii.faturaflow.dtos.InvoiceDTO;
 import com.renatoguii.faturaflow.dtos.InvoiceItemDTO;
 import com.renatoguii.faturaflow.entities.invoice.InvoiceEntity;
+import com.renatoguii.faturaflow.entities.invoice.InvoiceStatus;
 import com.renatoguii.faturaflow.entities.invoiceitem.InvoiceItemEntity;
+import com.renatoguii.faturaflow.entities.user.UserEntity;
 import com.renatoguii.faturaflow.exceptions.InvoiceException;
+import com.renatoguii.faturaflow.infra.security.token.JwtService;
+import com.renatoguii.faturaflow.infra.security.token.SecurityUtil;
 import com.renatoguii.faturaflow.repositories.InvoiceItemRepository;
 import com.renatoguii.faturaflow.repositories.InvoiceRepository;
+import com.renatoguii.faturaflow.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,8 +31,18 @@ public class InvoiceService {
     @Autowired
     InvoiceItemRepository invoiceItemRepository;
 
+    @Autowired
+    JwtService jwtService;
+
+    @Autowired
+    UserRepository userRepository;
+
+    @Autowired
+    SecurityUtil securityUtil;
+
     public Boolean saveItemInvoice(InvoiceEntity invoice, List<InvoiceItemDTO> items) {
         List<InvoiceItemEntity> newItems = new ArrayList<>();
+        invoiceItemRepository.deleteInvoiceItems(invoice.getId());
 
         for (InvoiceItemDTO item : items) {
             InvoiceItemEntity newItem = new InvoiceItemEntity(item.description(), item.amount(), invoice);
@@ -39,14 +55,19 @@ public class InvoiceService {
 
     public Boolean saveInvoice(InvoiceDTO data) {
         try {
-            LocalDate dateFormatted = LocalDate.parse(data.dueDate(), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            UserEntity user = securityUtil.getAuthenticatedUser();
 
-            InvoiceEntity newInvoice = new InvoiceEntity(data.name(), dateFormatted, data.totalAmount(), data.status());
+            String formattedCreatedDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+
+            InvoiceEntity newInvoice = new InvoiceEntity(user, data.name(), data.dueDate(), data.totalAmount(), data.status(), formattedCreatedDate);
             InvoiceEntity savedInvoice = invoiceRepository.save(newInvoice);
 
-            Boolean itsSavedItems = saveItemInvoice(savedInvoice, data.items());
+            if (data.items() != null) {
+                Boolean itsSavedItems = saveItemInvoice(savedInvoice, data.items());
+                return itsSavedItems;
+            }
 
-            return itsSavedItems;
+            return true;
 
         } catch (Exception e) {
             throw new InvoiceException("There was an error in the invoice registration");
@@ -72,7 +93,43 @@ public class InvoiceService {
 
     public List<InvoiceEntity> getAllInvoices () {
         try {
-            List<InvoiceEntity> invoices = invoiceRepository.findAll();
+
+            UserEntity user = securityUtil.getAuthenticatedUser();
+
+            List<InvoiceEntity> invoices = invoiceRepository.findByUser(user);
+
+            for (InvoiceEntity invoice : invoices) {
+
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                LocalDate dueDate = LocalDate.parse(invoice.getDueDate(), formatter);
+
+                if (invoice.getStatus() == InvoiceStatus.NOTPAID && dueDate.isBefore((LocalDate.now()))) {
+                    invoice.setStatus(InvoiceStatus.OVERDUE);
+                }
+
+            }
+
+            return invoiceRepository.saveAll(invoices);
+
+        } catch (Exception e) {
+            throw new InvoiceException("There was an error loading invoices");
+        }
+    }
+
+    public List<InvoiceEntity> getAllInvoicesCurrent () {
+        try {
+            UserEntity user = securityUtil.getAuthenticatedUser();
+            List<InvoiceEntity> invoices = invoiceRepository.findByStatusAndCurrentDataLike(user);
+            return invoices;
+        } catch (Exception e) {
+            throw new InvoiceException("There was an error loading invoices");
+        }
+    }
+
+    public List<InvoiceEntity> getAllInvoicesStatus (InvoiceStatus status) {
+        try {
+            UserEntity user = securityUtil.getAuthenticatedUser();
+            List<InvoiceEntity> invoices = invoiceRepository.findByStatus(status, user);
             return invoices;
         } catch (Exception e) {
             throw new InvoiceException("There was an error loading invoices");
@@ -104,10 +161,16 @@ public class InvoiceService {
             InvoiceEntity editedInvoice = possibleInvoice.get();
             editedInvoice.setName(data.name());
             editedInvoice.setTotalAmount(data.totalAmount());
-            editedInvoice.setDueDate(LocalDate.parse(data.dueDate(), DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            editedInvoice.setDueDate(data.dueDate());
             editedInvoice.setStatus(data.status());
 
-            return invoiceRepository.save(editedInvoice);
+            InvoiceEntity savedInvoice = invoiceRepository.save(editedInvoice);
+
+            if (data.items() != null) {
+                saveItemInvoice(savedInvoice, data.items());
+            }
+
+            return savedInvoice;
         } catch (Exception e) {
             throw new InvoiceException("An error occurred and the invoice details could not be edited");
         }

@@ -20,7 +20,7 @@ export default function Home() {
 
             <a 
             className="bg-gray-600 bg-opacity-20 py-2 px-5 border border-secondaryColor text-secondaryColor rounded hover:border-gray-600 hover:text-white hover:bg-blue-400 hover:bg-opacity-0 duration-300"
-            href="/register">
+            href="/auth">
               Comece Agora
             </a>
 

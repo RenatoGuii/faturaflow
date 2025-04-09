@@ -1,20 +1,35 @@
 'use client'
 
 import { OpenSideBarContext } from "@/contexts"
+import { useAuth, UserSessionToken } from "@/resources"
 import Link from "next/link"
-import { useContext } from "react"
+import { useRouter } from "next/navigation"
+import { useContext, useEffect, useState } from "react"
 import { IoMdClose } from "react-icons/io"
 import { LuFileSpreadsheet } from "react-icons/lu"
 import { MdDashboard, MdLogout } from "react-icons/md"
 import { VscMenu } from "react-icons/vsc"
 
 export const Sidebar: React.FC = () => {
+    const [userData, setUserData] = useState<UserSessionToken | null>(null);
     const sidebarContext = useContext(OpenSideBarContext);
     const { itsOpenSidebar, setItsOpenSidebar } = sidebarContext;
+
+    const useService = useAuth();
+    const router = useRouter();
 
     const OpenSideBar = () => {
         setItsOpenSidebar(!itsOpenSidebar);
     }
+
+    const logout = () => {
+        useService.invalidateSession();
+        router.push("/auth")
+    }
+
+    useEffect(() => {
+        setUserData(useService.getUserSessionToken);
+    }, [])
 
     return (
         <>
@@ -42,18 +57,18 @@ export const Sidebar: React.FC = () => {
                     <div className="flex-grow my-4 px-3">
                         <ul className="space-y-2 font-medium">
                             <li>
-                                <a href="#" className="flex items-center p-2 rounded-lg text-white hover:bg-secondaryColor group duration-200">
+                                <Link href="/dashboard" className="flex items-center p-2 rounded-lg text-white hover:bg-secondaryColor group duration-200">
                                     <MdDashboard />
                                     <span className="ms-3">Dashboard</span>
-                                </a>
+                                </Link>
                             </li>
                             <li>
-                                <a href="#" className="flex items-center p-2 rounded-lg text-white hover:bg-secondaryColor group duration-200">
+                                <Link href="/invoices" className="flex items-center p-2 rounded-lg text-white hover:bg-secondaryColor group duration-200">
                                     <LuFileSpreadsheet />
                                     <span className="flex-1 ms-3 whitespace-nowrap">Faturas</span>
-                                </a>
+                                </Link>
                             </li>
-                            <li>
+                            <li onClick={logout}>
                                 <a href="#" className="flex items-center p-2 rounded-lg text-white hover:bg-secondaryColor group duration-200">
                                     <MdLogout />
                                     <span className="flex-1 ms-3 whitespace-nowrap">Sair</span>
@@ -62,13 +77,10 @@ export const Sidebar: React.FC = () => {
                         </ul>
                     </div>
 
-                    <Link href="/" className="px-3 py-5 flex gap-4 hover:bg-gray-600 duration-200">
-                        <div className="bg-white h-12 w-12 rounded-full" />
-                        <div>
-                            <p className="flex-grow w-40 whitespace-nowrap overflow-hidden overflow-ellipsis">{`Nome Sobrenome`}</p>
-                            <p className="flex-grow w-40 whitespace-nowrap overflow-hidden overflow-ellipsis">{`email@email.com`}</p>
-                        </div>
-                    </Link>
+                    <div className="px-3 py-5 flex flex-col gap-4 hover:bg-gray-600 duration-200">
+                        <p className="flex-grow w-full whitespace-nowrap overflow-hidden overflow-ellipsis">{userData?.name} {userData?.lastName}</p>
+                        <p className="flex-grow w-full whitespace-nowrap overflow-hidden overflow-ellipsis">{userData?.email}</p>
+                    </div>
                 </div>
             </aside>
 

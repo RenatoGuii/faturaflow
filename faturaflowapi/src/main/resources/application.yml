@@ -12,10 +12,10 @@ spring:
     show-sql: true
 
 # Production
---- # o que vier apÛs esses 3 traÁos, ser· sobrescrito
+--- # o que vier ap√≥s esses 3 tra√ßos, ser√° sobrescrito
 spring:
   config:
     activate:
       on-profile: production
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST}:5432/imagelite
+    url: jdbc:postgresql://${POSTGRES_HOST}:5432/faturaflow
